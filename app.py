@@ -28,13 +28,19 @@ POSTGRES_USER = 'postgres'         # your PostgreSQL username
 POSTGRES_PASSWORD = 'apjc'     # your PostgreSQL password
 
 def get_pg_connection():
-    return psycopg2.connect(
-        host=POSTGRES_HOST,
-        dbname=POSTGRES_DB,
-        user=POSTGRES_USER,
-            password=POSTGRES_PASSWORD,  # Updated password
-        cursor_factory=RealDictCursor
-    )
+    db_url = os.environ.get("DATABASE_URL")
+    if db_url:
+        if db_url.startswith("postgres://"):
+            db_url = db_url.replace("postgres://", "postgresql://", 1)
+        return psycopg2.connect(db_url, cursor_factory=RealDictCursor)
+    else:
+        return psycopg2.connect(
+            host=POSTGRES_HOST,
+            dbname=POSTGRES_DB,
+            user=POSTGRES_USER,
+            password=POSTGRES_PASSWORD,
+            cursor_factory=RealDictCursor
+        )
 
 # Example usage (uncomment to test connection):
 # with get_pg_connection() as conn:
