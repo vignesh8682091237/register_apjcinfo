@@ -1,0 +1,40 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2>Registration Form</h2>
+<form method="post" novalidate>
+  <div class="mb-3">
+    <label class="form-label">Full Name</label>
+    <input name="name" class="form-control" required value="{{ form.name if form else '' }}">
+  </div>
+  <div class="mb-3">
+    <label class="form-label">WhatsApp Number</label>
+    <input name="whatsapp" class="form-control" required value="{{ form.whatsapp if form else '' }}">
+  </div>
+  <div class="mb-3">
+    <label class="form-label">Email</label>
+    <input name="email" type="email" class="form-control" required value="{{ form.email if form else '' }}">
+  </div>
+  <div class="mb-3">
+    <label class="form-label">Qualification</label>
+    <input name="qualification" class="form-control" required value="{{ form.qualification if form else '' }}">
+  </div>
+  <div class="mb-3">
+    <label class="form-label">Designation</label>
+    <input name="designation" class="form-control" required value="{{ form.designation if form else '' }}">
+  </div>
+  <div class="mb-3">
+    <label class="form-label">Gender</label>
+    <select name="gender" class="form-select" required>
+      <option value="">Choose...</option>
+      <option value="Male">Male</option>
+      <option value="Female">Female</option>
+      <option value="Other">Other</option>
+    </select>
+  </div>
+  <div class="mb-3">
+    <label class="form-label">College / Company</label>
+    <input name="college" class="form-control" required value="{{ form.college if form else '' }}">
+  </div>
+  <button class="btn btn-primary" type="submit">Submit</button>
+</form>
+{% endblock %}
