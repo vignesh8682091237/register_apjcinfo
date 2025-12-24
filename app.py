@@ -497,8 +497,8 @@ def ensure_registrations_table_exists():
         conn.commit()
 
 # Ensure DB and table exist at startup
-ensure_database_exists()
-ensure_registrations_table_exists()
+# ensure_database_exists()
+# ensure_registrations_table_exists()
 
 if __name__ == '__main__':
     app.run(debug=True)
