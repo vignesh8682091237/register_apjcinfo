@@ -9,7 +9,7 @@ EXCEL_FILE = os.path.join(os.path.dirname(__file__), 'registrations.xlsx')
 ADMIN_EMAIL = 'admin@gmail.com'
 ADMIN_PASSWORD = 'Aniruth8682@'
 
-HEADERS = ['Name', 'WhatsApp', 'Email', 'Qualification', 'Designation', 'Gender', 'College/Company']
+HEADERS = ['Name', 'WhatsApp', 'Email', 'Qualification', 'Designation', 'Gender', 'College/Company', 'Blood Donation', 'Blood Group', 'Webinar Interest', 'Webinar Date']
 
 
 def ensure_workbook():
@@ -25,7 +25,11 @@ def append_registration(data: dict):
     ensure_workbook()
     wb = load_workbook(EXCEL_FILE)
     ws = wb.active
-    row = [data['name'], data['whatsapp'], data['email'], data['qualification'], data['designation'], data['gender'], data['college']]
+    row = [
+        data.get('name',''), data.get('whatsapp',''), data.get('email',''),
+        data.get('qualification',''), data.get('designation',''), data.get('gender',''), data.get('college',''),
+        data.get('blood_donation','No'), data.get('blood_group',''), data.get('webinar_interest','No'), data.get('webinar_date','')
+    ]
     ws.append(row)
     wb.save(EXCEL_FILE)
 
@@ -67,6 +71,11 @@ def register():
             flash('Please fill all required fields: ' + ', '.join(missing), 'danger')
             return render_template('register.html', form=request.form)
 
+        blood_donation = request.form.get('blood_donation', 'No')
+        blood_group = request.form.get('blood_group', '').strip()
+        webinar_interest = request.form.get('webinar_interest', 'No')
+        webinar_date = request.form.get('webinar_date', '').strip()
+
         data = {
             'name': name,
             'whatsapp': whatsapp,
@@ -75,7 +84,19 @@ def register():
             'designation': designation,
             'gender': gender,
             'college': college,
+            'blood_donation': blood_donation,
+            'blood_group': blood_group,
+            'webinar_interest': webinar_interest,
+            'webinar_date': webinar_date,
         }
+        # conditional validation
+        if blood_donation == 'Yes' and not blood_group:
+            flash('Please select your blood group', 'danger')
+            return render_template('register.html', form=request.form)
+        if webinar_interest == 'Yes' and not webinar_date:
+            flash('Please pick a preferred webinar date', 'danger')
+            return render_template('register.html', form=request.form)
+
         append_registration(data)
         flash('Registration submitted successfully.', 'success')
         return redirect(url_for('register'))
