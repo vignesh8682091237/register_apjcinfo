@@ -1,0 +1,44 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <div>
+    <h2 class="mb-0">API Key Management</h2>
+    <small class="text-muted">Create and view API key for the JSON API</small>
+  </div>
+  <div>
+    <a href="{{ url_for('admin_dashboard') }}" class="btn btn-secondary btn-sm">Back</a>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-body">
+    <p>Use the API key to call <code>/api/registrations</code>. Pass it via header <code>X-API-Key</code> or query param <code>?api_key=...</code>.</p>
+    {% if api_key %}
+      <div class="mb-3">
+        <label class="form-label">Current API Key</label>
+        <div class="input-group input-group-sm">
+          <input class="form-control" readonly value="{{ api_key }}">
+          <button class="btn btn-outline-secondary" id="copyBtn">Copy</button>
+        </div>
+      </div>
+    {% else %}
+      <div class="alert alert-warning">No API key configured yet.</div>
+    {% endif %}
+
+    <form method="post">
+      <button class="btn btn-danger btn-sm" type="submit">Generate / Regenerate API Key</button>
+    </form>
+  </div>
+</div>
+
+<script>
+document.getElementById('copyBtn')?.addEventListener('click', function(){
+  const input = this.parentElement.querySelector('input');
+  if(!input) return;
+  navigator.clipboard.writeText(input.value).then(()=>{
+    this.textContent = 'Copied';
+    setTimeout(()=> this.textContent='Copy', 1500);
+  });
+});
+</script>
+{% endblock %}

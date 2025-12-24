@@ -11,36 +11,62 @@
   </div>
 </div>
 
-<div class="row g-3 mb-4">
-  <div class="col-sm-6 col-md-3">
-    <div class="card shadow-sm">
-      <div class="card-body">
-        <h6 class="card-subtitle mb-2 text-muted">Total Registrations</h6>
-        <h3 class="card-title">{{ total }}</h3>
+<form class="row g-2 align-items-center mb-3" method="get" action="{{ url_for('admin_dashboard') }}">
+  <div class="col-auto">
+    <label class="visually-hidden" for="startDate">Start</label>
+    <input type="date" class="form-control form-control-sm" id="startDate" name="start" value="{{ start or '' }}">
+  </div>
+  <div class="col-auto">
+    <label class="visually-hidden" for="endDate">End</label>
+    <input type="date" class="form-control form-control-sm" id="endDate" name="end" value="{{ end or '' }}">
+  </div>
+  <div class="col-auto">
+    <button type="submit" class="btn btn-sm btn-primary">Filter</button>
+    <a href="{{ url_for('admin_dashboard') }}" class="btn btn-sm btn-outline-secondary ms-1">Clear</a>
+  </div>
+  <div class="col-auto ms-auto">
+    <a href="{{ url_for('admin_download') }}" class="btn btn-sm btn-success">Download All</a>
+    <a href="{{ url_for('admin_download') }}?start={{ start }}&end={{ end }}" class="btn btn-sm btn-warning ms-1">Download Filtered</a>
+    <a href="{{ url_for('admin_api_key') }}" class="btn btn-sm btn-outline-dark ms-2">API Key</a>
+  </div>
+</form>
+
+<div class="row g-3 mb-4 align-items-stretch">
+  <div class="col-12 col-md-5">
+    <div class="card text-white bg-primary h-100 shadow">
+      <div class="card-body d-flex align-items-center">
+        <div class="me-3" style="font-size:2.2rem;">📊</div>
+        <div>
+          <h6 class="card-subtitle mb-1 text-white-50">Total Registrations</h6>
+          <h1 class="card-title display-4 mb-0">{{ total }}</h1>
+        </div>
       </div>
     </div>
   </div>
-  <div class="col-sm-6 col-md-3">
-    <div class="card shadow-sm">
+
+  <div class="col-6 col-sm-4 col-md-2">
+    <div class="card h-100 text-white bg-info shadow-sm">
       <div class="card-body">
-        <h6 class="card-subtitle mb-2 text-muted">Interested in Webinars</h6>
-        <h3 class="card-title">{{ webinar_interest_count }}</h3>
+        <h6 class="card-subtitle mb-1 text-white-75">Webinar Interest</h6>
+        <h3 class="card-title mb-0">{{ webinar_interest_count }}</h3>
       </div>
     </div>
   </div>
-  <div class="col-sm-6 col-md-3">
-    <div class="card shadow-sm">
+
+  <div class="col-6 col-sm-4 col-md-2">
+    <div class="card h-100 text-white bg-danger shadow-sm">
       <div class="card-body">
-        <h6 class="card-subtitle mb-2 text-muted">Blood Donation Interested</h6>
-        <h3 class="card-title">{{ blood_donation_count }}</h3>
+        <h6 class="card-subtitle mb-1 text-white-75">Blood Donation</h6>
+        <h3 class="card-title mb-0">{{ blood_donation_count }}</h3>
       </div>
     </div>
   </div>
-  <div class="col-sm-6 col-md-3">
-    <div class="card shadow-sm">
+
+  <div class="col-12 col-sm-4 col-md-3">
+    <div class="card h-100 text-white bg-success shadow-sm">
       <div class="card-body">
-        <h6 class="card-subtitle mb-2 text-muted">Unique Colleges</h6>
-        <h3 class="card-title">{{ college_counts|length }}</h3>
+        <h6 class="card-subtitle mb-1 text-white-75">Unique Colleges</h6>
+        <h3 class="card-title mb-0">{{ college_counts|length }}</h3>
       </div>
     </div>
   </div>
@@ -50,22 +76,48 @@
   <div class="col-lg-6 mb-4">
     <div class="card shadow-sm">
       <div class="card-body">
-        <h5 class="card-title">Qualification Breakdown</h5>
-        <canvas id="qualChart" height="220"></canvas>
+        <h5 class="card-title">Top Qualifications</h5>
+        <ul class="list-group list-group-flush">
+          {% for label,count in qual_counts[:5] %}
+          <li class="list-group-item d-flex justify-content-between align-items-center">
+            {{ label }}
+            <span class="badge bg-primary rounded-pill">{{ count }}</span>
+          </li>
+          {% else %}
+          <li class="list-group-item">No data</li>
+          {% endfor %}
+        </ul>
       </div>
     </div>
   </div>
+
   <div class="col-lg-6 mb-4">
     <div class="card shadow-sm mb-3">
       <div class="card-body">
-        <h5 class="card-title">Designation Breakdown</h5>
-        <canvas id="desigChart" height="220"></canvas>
+        <h5 class="card-title">Top Designations</h5>
+        <ul class="list-group list-group-flush">
+          {% for label,count in desig_counts[:5] %}
+          <li class="list-group-item d-flex justify-content-between align-items-center">
+            {{ label }}
+            <span class="badge bg-secondary rounded-pill">{{ count }}</span>
+          </li>
+          {% else %}
+          <li class="list-group-item">No data</li>
+          {% endfor %}
+        </ul>
       </div>
     </div>
+
     <div class="card shadow-sm">
       <div class="card-body">
         <h5 class="card-title">Gender Distribution</h5>
-        <canvas id="genderChart" height="150"></canvas>
+        <div class="d-flex gap-2 flex-wrap">
+          {% for label,count in gender_counts %}
+            <div class="badge bg-info text-dark p-2">{{ label }}: {{ count }}</div>
+          {% else %}
+            <div>No data</div>
+          {% endfor %}
+        </div>
       </div>
     </div>
   </div>
@@ -92,15 +144,15 @@
         <tbody>
           {% for r in regs|reverse %}
           <tr>
-            <td>{{ loop.index }}</td>
-            <td>{{ r['Name'] }}</td>
-            <td>{{ r['Email'] }}</td>
-            <td>{{ r['WhatsApp'] }}</td>
-            <td>{{ r['Qualification'] }}</td>
-            <td>{{ r['Designation'] }}</td>
-            <td>{{ r['Blood Group'] }}</td>
-            <td>{{ r['Webinar Date'] }}</td>
-            <td>{{ r['Registered At'] }}</td>
+            <td>{{ total - loop.index + 1 }}</td>
+            <td>{{ r.get('Name','') }}</td>
+            <td>{{ r.get('Email','') }}</td>
+            <td>{{ r.get('WhatsApp','') }}</td>
+            <td>{{ r.get('Qualification','') }}</td>
+            <td>{{ r.get('Designation','') }}</td>
+            <td>{{ r.get('Blood Group','') }}</td>
+            <td>{{ r.get('Webinar Date','') }}</td>
+            <td>{{ r.get('Registered At','') }}</td>
           </tr>
           {% endfor %}
         </tbody>
@@ -109,40 +161,5 @@
   </div>
 </div>
 
-<!-- Chart.js -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script>
-  // data from server (lists of [label, value])
-  const qual = {{ qual_counts|tojson }};
-  const desig = {{ desig_counts|tojson }};
-  const gender = {{ gender_counts|tojson }};
-
-  function labelsAndValues(pairs){
-    return [pairs.map(p=>p[0]), pairs.map(p=>p[1])];
-  }
-
-  const [qLabels, qValues] = labelsAndValues(qual);
-  const [dLabels, dValues] = labelsAndValues(desig);
-  const [gLabels, gValues] = labelsAndValues(gender);
-
-  const pal = [ '#0d6efd','#6610f2','#6f42c1','#d63384','#dc3545','#fd7e14','#ffc107','#198754','#20c997','#0dcaf0' ];
-
-  new Chart(document.getElementById('qualChart'), {
-    type: 'bar',
-    data: { labels: qLabels, datasets: [{ label: 'Count', data: qValues, backgroundColor: pal.slice(0,qValues.length) }] },
-    options: { responsive:true, maintainAspectRatio:false }
-  });
-
-  new Chart(document.getElementById('desigChart'), {
-    type: 'bar',
-    data: { labels: dLabels, datasets: [{ label: 'Count', data: dValues, backgroundColor: pal.slice(0,dValues.length) }] },
-    options: { responsive:true, maintainAspectRatio:false }
-  });
-
-  new Chart(document.getElementById('genderChart'), {
-    type: 'doughnut',
-    data: { labels: gLabels, datasets: [{ data: gValues, backgroundColor: pal.slice(0,gValues.length) }] },
-    options: { responsive:true, maintainAspectRatio:false }
-  });
-</script>
+<!-- Charts removed — showing card views for qualification/designation -->
 {% endblock %}
