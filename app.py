@@ -1,6 +1,7 @@
 from flask import Flask, render_template, request, redirect, url_for, flash, session, send_file
 import os
 from openpyxl import Workbook, load_workbook
+from datetime import datetime
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('FLASK_SECRET', 'dev-secret-key')
@@ -9,7 +10,7 @@ EXCEL_FILE = os.path.join(os.path.dirname(__file__), 'registrations.xlsx')
 ADMIN_EMAIL = 'admin@gmail.com'
 ADMIN_PASSWORD = 'Aniruth8682@'
 
-HEADERS = ['Name', 'WhatsApp', 'Email', 'Qualification', 'Designation', 'Gender', 'College/Company', 'Blood Donation', 'Blood Group', 'Webinar Interest', 'Webinar Date']
+HEADERS = ['Name', 'WhatsApp', 'Email', 'Qualification', 'Designation', 'Gender', 'College/Company', 'Blood Donation', 'Blood Group', 'Webinar Interest', 'Webinar Date', 'Registered At']
 
 
 def ensure_workbook():
@@ -25,10 +26,12 @@ def append_registration(data: dict):
     ensure_workbook()
     wb = load_workbook(EXCEL_FILE)
     ws = wb.active
+    # include registration timestamp
+    registered_at = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     row = [
         data.get('name',''), data.get('whatsapp',''), data.get('email',''),
         data.get('qualification',''), data.get('designation',''), data.get('gender',''), data.get('college',''),
-        data.get('blood_donation','No'), data.get('blood_group',''), data.get('webinar_interest','No'), data.get('webinar_date','')
+        data.get('blood_donation','No'), data.get('blood_group',''), data.get('webinar_interest','No'), data.get('webinar_date',''), registered_at
     ]
     ws.append(row)
     wb.save(EXCEL_FILE)
@@ -154,7 +157,11 @@ def admin_dashboard():
     gender_counts = counts_for('Gender')
     college_counts = counts_for('College/Company')
 
-    return render_template('admin_dashboard.html', total=total, regs=regs, qual_counts=qual_counts, desig_counts=desig_counts, gender_counts=gender_counts, college_counts=college_counts)
+    # compute some quick counts for dashboard cards
+    webinar_interest_count = sum(1 for r in regs if (r.get('Webinar Interest') or '').strip().lower() == 'yes')
+    blood_donation_count = sum(1 for r in regs if (r.get('Blood Donation') or '').strip().lower() == 'yes')
+
+    return render_template('admin_dashboard.html', total=total, regs=regs, qual_counts=qual_counts, desig_counts=desig_counts, gender_counts=gender_counts, college_counts=college_counts, webinar_interest_count=webinar_interest_count, blood_donation_count=blood_donation_count)
 
 
 @app.route('/admin/download')
