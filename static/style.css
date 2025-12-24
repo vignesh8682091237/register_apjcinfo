@@ -1,0 +1,34 @@
+/* style.css for admin dashboard preview */
+
+.site-header {
+  background-color: #0d6efd;
+  color: #fff;
+  padding: 1rem 0;
+  margin-bottom: 1rem;
+}
+.site-header .h1 {
+  color: #fff;
+  margin: 0;
+  font-size: 1.25rem;
+  letter-spacing: .5px;
+}
+.brand-link {
+  color: #fff !important;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.btn-download-excel {
+  background: #0d6efd;
+  color: #fff;
+}
+
+.btn-download-excel:hover,
+.btn-download-excel:focus {
+  background: #0b5ed7;
+  color: #fff;
+}
+
+.dashboard-icon {
+  font-size: 2.2rem;
+}

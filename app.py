@@ -1,4 +1,6 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, session, send_file
+from flask import Flask, render_template, request, redirect, url_for, flash, session, send_file, jsonify
+import psycopg2
+from psycopg2.extras import RealDictCursor
 import os
 from openpyxl import Workbook, load_workbook
 from datetime import datetime, timedelta
@@ -10,8 +12,35 @@ import jwt
 API_KEY_FILE = os.path.join(os.path.dirname(__file__), '.api_key')
 JWT_EXP_MINUTES = 30
 
+
+
+from flask_cors import CORS
 app = Flask(__name__)
 app.secret_key = os.environ.get('FLASK_SECRET', 'dev-secret-key')
+CORS(app)
+
+
+# PostgreSQL connection config
+# Set your actual server details here:
+POSTGRES_HOST = 'localhost'         # e.g., 'localhost' or your cloud server address
+POSTGRES_DB = 'register_db'        # your database name
+POSTGRES_USER = 'postgres'         # your PostgreSQL username
+POSTGRES_PASSWORD = 'apjc'     # your PostgreSQL password
+
+def get_pg_connection():
+    return psycopg2.connect(
+        host=POSTGRES_HOST,
+        dbname=POSTGRES_DB,
+        user=POSTGRES_USER,
+            password=POSTGRES_PASSWORD,  # Updated password
+        cursor_factory=RealDictCursor
+    )
+
+# Example usage (uncomment to test connection):
+# with get_pg_connection() as conn:
+#     with conn.cursor() as cur:
+#         cur.execute('SELECT version();')
+#         print(cur.fetchone())
 
 EXCEL_FILE = os.path.join(os.path.dirname(__file__), 'registrations.xlsx')
 ADMIN_EMAIL = 'admin@gmail.com'
@@ -46,31 +75,39 @@ def ensure_workbook():
         wb.save(EXCEL_FILE)
 
 
-def append_registration(data: dict):
-    ensure_workbook()
-    wb = load_workbook(EXCEL_FILE)
-    ws = wb.active
-    # include registration timestamp
-    registered_at = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    row = [
+
+# Save registration to PostgreSQL
+def append_registration_pg(data: dict):
+    query = '''
+        INSERT INTO registrations
+        (name, whatsapp, email, qualification, designation, gender, college_company, blood_donation, blood_group, webinar_interest, webinar_date, registered_at)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+    '''
+    registered_at = datetime.now()
+    values = (
         data.get('name',''), data.get('whatsapp',''), data.get('email',''),
         data.get('qualification',''), data.get('designation',''), data.get('gender',''), data.get('college',''),
         data.get('blood_donation','No'), data.get('blood_group',''), data.get('webinar_interest','No'), data.get('webinar_date',''), registered_at
-    ]
-    ws.append(row)
-    wb.save(EXCEL_FILE)
+    )
+    with get_pg_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(query, values)
+        conn.commit()
 
 
+
+# Fetch registrations from PostgreSQL
 def read_registrations():
-    ensure_workbook()
-    wb = load_workbook(EXCEL_FILE)
-    ws = wb.active
-    rows = list(ws.values)
-    if not rows:
-        return []
-    headers = rows[0]
-    data = [dict(zip(headers, r)) for r in rows[1:]]
-    return data
+    query = '''
+        SELECT name AS "Name", whatsapp AS "WhatsApp", email AS "Email", qualification AS "Qualification", designation AS "Designation", gender AS "Gender", college_company AS "College/Company", blood_donation AS "Blood Donation", blood_group AS "Blood Group", webinar_interest AS "Webinar Interest", webinar_date AS "Webinar Date", registered_at AS "Registered At"
+        FROM registrations
+        ORDER BY registered_at DESC
+    '''
+    with get_pg_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(query)
+            rows = cur.fetchall()
+    return rows
 
 
 @app.route('/')
@@ -78,16 +115,22 @@ def home():
     return redirect(url_for('register'))
 
 
+
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     if request.method == 'POST':
-        name = request.form.get('name', '').strip()
-        whatsapp = request.form.get('whatsapp', '').strip()
-        email = request.form.get('email', '').strip()
-        qualification = request.form.get('qualification', '').strip()
-        designation = request.form.get('designation', '').strip()
-        gender = request.form.get('gender', '').strip()
-        college = request.form.get('college', '').strip()
+        if request.is_json:
+            req_data = request.get_json()
+        else:
+            req_data = request.form
+
+        name = req_data.get('name', '').strip()
+        whatsapp = req_data.get('whatsapp', '').strip()
+        email = req_data.get('email', '').strip()
+        qualification = req_data.get('qualification', '').strip()
+        designation = req_data.get('designation', '').strip()
+        gender = req_data.get('gender', '').strip()
+        college = req_data.get('college', '').strip()
 
         missing = []
         for field, label in [(name, 'Name'), (whatsapp, 'WhatsApp'), (email, 'Email'), (qualification, 'Qualification'), (designation, 'Designation'), (gender, 'Gender'), (college, 'College/Company')]:
@@ -95,13 +138,15 @@ def register():
                 missing.append(label)
 
         if missing:
+            if request.is_json:
+                return jsonify({'error': 'Please fill all required fields: ' + ', '.join(missing)}), 400
             flash('Please fill all required fields: ' + ', '.join(missing), 'danger')
-            return render_template('register.html', form=request.form)
+            return render_template('register.html', form=req_data)
 
-        blood_donation = request.form.get('blood_donation', 'No')
-        blood_group = request.form.get('blood_group', '').strip()
-        webinar_interest = request.form.get('webinar_interest', 'No')
-        webinar_date = request.form.get('webinar_date', '').strip()
+        blood_donation = req_data.get('blood_donation', 'No')
+        blood_group = req_data.get('blood_group', '').strip()
+        webinar_interest = req_data.get('webinar_interest', 'No')
+        webinar_date = req_data.get('webinar_date', '').strip()
 
         data = {
             'name': name,
@@ -118,13 +163,19 @@ def register():
         }
         # conditional validation
         if blood_donation == 'Yes' and not blood_group:
+            if request.is_json:
+                return jsonify({'error': 'Please select your blood group'}), 400
             flash('Please select your blood group', 'danger')
-            return render_template('register.html', form=request.form)
+            return render_template('register.html', form=req_data)
         if webinar_interest == 'Yes' and not webinar_date:
+            if request.is_json:
+                return jsonify({'error': 'Please pick a preferred webinar date'}), 400
             flash('Please pick a preferred webinar date', 'danger')
-            return render_template('register.html', form=request.form)
+            return render_template('register.html', form=req_data)
 
-        append_registration(data)
+        append_registration_pg(data)
+        if request.is_json:
+            return jsonify({'message': 'Registration submitted successfully.'}), 201
         flash('Registration submitted successfully.', 'success')
         return redirect(url_for('register'))
 
@@ -295,48 +346,35 @@ def admin_download():
     # support optional date range query params to download filtered data
     start = request.args.get('start')
     end = request.args.get('end')
-    ensure_workbook()
-    if not start and not end:
-        return send_file(EXCEL_FILE, as_attachment=True, download_name='registrations.xlsx')
 
-    # load all registrations and filter by Registered At
-    regs = read_registrations()
+    # Build SQL query with optional date filtering
+    base_query = '''
+        SELECT name AS "Name", whatsapp AS "WhatsApp", email AS "Email", qualification AS "Qualification", designation AS "Designation", gender AS "Gender", college_company AS "College/Company", blood_donation AS "Blood Donation", blood_group AS "Blood Group", webinar_interest AS "Webinar Interest", webinar_date AS "Webinar Date", registered_at AS "Registered At"
+        FROM registrations
+    '''
+    filters = []
+    params = []
+    if start:
+        filters.append('registered_at >= %s')
+        params.append(f"{start} 00:00:00")
+    if end:
+        filters.append('registered_at <= %s')
+        params.append(f"{end} 23:59:59")
+    if filters:
+        base_query += ' WHERE ' + ' AND '.join(filters)
+    base_query += ' ORDER BY registered_at DESC'
 
-    def parse_registered_at_val(v):
-        try:
-            return datetime.strptime(v, '%Y-%m-%d %H:%M:%S')
-        except Exception:
-            return None
-
-    try:
-        start_dt = datetime.strptime(start, '%Y-%m-%d') if start else None
-    except Exception:
-        start_dt = None
-    try:
-        end_dt = datetime.strptime(end, '%Y-%m-%d') if end else None
-        if end_dt:
-            end_dt = end_dt.replace(hour=23, minute=59, second=59)
-    except Exception:
-        end_dt = None
-
-    def in_range(r):
-        rdt = parse_registered_at_val(r.get('Registered At') or '')
-        if not rdt:
-            return False
-        if start_dt and rdt < start_dt:
-            return False
-        if end_dt and rdt > end_dt:
-            return False
-        return True
-
-    filtered = [r for r in regs if in_range(r)]
+    with get_pg_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(base_query, params)
+            regs = cur.fetchall()
 
     # write filtered to an in-memory workbook
     wb = Workbook()
     ws = wb.active
     ws.title = 'Registrations'
     ws.append(HEADERS)
-    for r in filtered:
+    for r in regs:
         row = [r.get(h, '') for h in HEADERS]
         ws.append(row)
 
@@ -369,44 +407,96 @@ def api_registrations():
         if not real or not provided_key or provided_key != real:
             return ({'error': 'unauthorized'}, 401)
 
-    regs = read_registrations()
-
     # optional date range
     start = request.args.get('start')
     end = request.args.get('end')
 
-    def parse_registered_at_val(v):
-        try:
-            return datetime.strptime(v, '%Y-%m-%d %H:%M:%S')
-        except Exception:
-            return None
+    base_query = '''
+        SELECT name AS "Name", whatsapp AS "WhatsApp", email AS "Email", qualification AS "Qualification", designation AS "Designation", gender AS "Gender", college_company AS "College/Company", blood_donation AS "Blood Donation", blood_group AS "Blood Group", webinar_interest AS "Webinar Interest", webinar_date AS "Webinar Date", registered_at AS "Registered At"
+        FROM registrations
+    '''
+    filters = []
+    params = []
+    if start:
+        filters.append('registered_at >= %s')
+        params.append(f"{start} 00:00:00")
+    if end:
+        filters.append('registered_at <= %s')
+        params.append(f"{end} 23:59:59")
+    if filters:
+        base_query += ' WHERE ' + ' AND '.join(filters)
+    base_query += ' ORDER BY registered_at DESC'
 
-    try:
-        start_dt = datetime.strptime(start, '%Y-%m-%d') if start else None
-    except Exception:
-        start_dt = None
-    try:
-        end_dt = datetime.strptime(end, '%Y-%m-%d') if end else None
-        if end_dt:
-            end_dt = end_dt.replace(hour=23, minute=59, second=59)
-    except Exception:
-        end_dt = None
-
-    def in_range(r):
-        rdt = parse_registered_at_val(r.get('Registered At') or '')
-        if not rdt:
-            return False
-        if start_dt and rdt < start_dt:
-            return False
-        if end_dt and rdt > end_dt:
-            return False
-        return True
-
-    if start_dt or end_dt:
-        regs = [r for r in regs if in_range(r)]
+    with get_pg_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(base_query, params)
+            regs = cur.fetchall()
 
     return {'count': len(regs), 'registrations': regs}
 
 
+def ensure_database_exists():
+    """
+    Ensure the PostgreSQL database exists. If not, create it using the default 'postgres' database.
+    """
+    import psycopg2
+    try:
+        # Try connecting to the target database
+        conn = psycopg2.connect(
+            host=POSTGRES_HOST,
+            dbname=POSTGRES_DB,
+            user=POSTGRES_USER,
+            password=POSTGRES_PASSWORD
+        )
+        conn.close()
+    except psycopg2.OperationalError as e:
+        if f'database "{POSTGRES_DB}" does not exist' in str(e):
+            # Connect to default 'postgres' database and create the target database
+            conn = psycopg2.connect(
+                host=POSTGRES_HOST,
+                dbname='postgres',
+                user=POSTGRES_USER,
+                password=POSTGRES_PASSWORD
+            )
+            conn.autocommit = True  # Set autocommit before creating cursor
+            with conn.cursor() as cur:
+                cur.execute(f'CREATE DATABASE {POSTGRES_DB};')
+            conn.close()
+            print(f"Database '{POSTGRES_DB}' created.")
+        else:
+            raise
+
+def ensure_registrations_table_exists():
+    """
+    Ensure the 'registrations' table exists in the database. Create it if missing.
+    """
+    create_table_sql = '''
+    CREATE TABLE IF NOT EXISTS registrations (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(100),
+        whatsapp VARCHAR(20),
+        email VARCHAR(100),
+        qualification VARCHAR(100),
+        designation VARCHAR(100),
+        gender VARCHAR(20),
+        college_company VARCHAR(200),
+        blood_donation VARCHAR(10),
+        blood_group VARCHAR(10),
+        webinar_interest VARCHAR(10),
+        webinar_date DATE,
+        registered_at TIMESTAMP
+    );
+    '''
+    with get_pg_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(create_table_sql)
+        conn.commit()
+
+# Ensure DB and table exist at startup
+ensure_database_exists()
+ensure_registrations_table_exists()
+
 if __name__ == '__main__':
     app.run(debug=True)
+
+
