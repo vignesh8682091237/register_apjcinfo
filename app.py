@@ -90,10 +90,13 @@ def append_registration_pg(data: dict):
         VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
     '''
     registered_at = datetime.now()
+    webinar_date = data.get('webinar_date','')
+    if not webinar_date:
+        webinar_date = None
     values = (
         data.get('name',''), data.get('whatsapp',''), data.get('email',''),
         data.get('qualification',''), data.get('designation',''), data.get('gender',''), data.get('college',''),
-        data.get('blood_donation','No'), data.get('blood_group',''), data.get('webinar_interest','No'), data.get('webinar_date',''), registered_at
+        data.get('blood_donation','No'), data.get('blood_group',''), data.get('webinar_interest','No'), webinar_date, registered_at
     )
     with get_pg_connection() as conn:
         with conn.cursor() as cur:
@@ -172,11 +175,6 @@ def register():
             if request.is_json:
                 return jsonify({'error': 'Please select your blood group'}), 400
             flash('Please select your blood group', 'danger')
-            return render_template('register.html', form=req_data)
-        if webinar_interest == 'Yes' and not webinar_date:
-            if request.is_json:
-                return jsonify({'error': 'Please pick a preferred webinar date'}), 400
-            flash('Please pick a preferred webinar date', 'danger')
             return render_template('register.html', form=req_data)
 
         append_registration_pg(data)
