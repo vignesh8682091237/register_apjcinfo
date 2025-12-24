@@ -1,88 +1,146 @@
 {% extends 'base.html' %}
 {% block content %}
-<div class="d-flex justify-content-between align-items-center">
-  <h2>Admin Dashboard</h2>
+<div class="d-flex justify-content-between align-items-center mb-3">
   <div>
-    <a href="/admin/download" class="btn btn-success">Download Excel</a>
-    <a href="/admin/logout" class="btn btn-secondary">Logout</a>
+    <h2 class="mb-0">Admin Dashboard</h2>
+    <small class="text-muted">Overview of registrations</small>
+  </div>
+  <div>
+    <a href="/admin/download" class="btn btn-outline-light btn-sm me-2" style="background:#0d6efd;color:#fff">Download Excel</a>
+    <a href="/admin/logout" class="btn btn-secondary btn-sm">Logout</a>
   </div>
 </div>
 
-<div class="mt-3">
-  <div class="card mb-3">
-    <div class="card-body">
-      <h5 class="card-title">Total Registrations: {{ total }}</h5>
+<div class="row g-3 mb-4">
+  <div class="col-sm-6 col-md-3">
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <h6 class="card-subtitle mb-2 text-muted">Total Registrations</h6>
+        <h3 class="card-title">{{ total }}</h3>
+      </div>
     </div>
   </div>
-
-  <div class="row">
-    <div class="col-md-6">
-      <h5>Qualification Counts</h5>
-      <ul class="list-group mb-3">
-        {% for k,v in qual_counts %}
-          <li class="list-group-item d-flex justify-content-between align-items-center">{{ k }}<span class="badge bg-primary rounded-pill">{{ v }}</span></li>
-        {% endfor %}
-      </ul>
-    </div>
-    <div class="col-md-6">
-      <h5>Designation Counts</h5>
-      <ul class="list-group mb-3">
-        {% for k,v in desig_counts %}
-          <li class="list-group-item d-flex justify-content-between align-items-center">{{ k }}<span class="badge bg-primary rounded-pill">{{ v }}</span></li>
-        {% endfor %}
-      </ul>
+  <div class="col-sm-6 col-md-3">
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <h6 class="card-subtitle mb-2 text-muted">Interested in Webinars</h6>
+        <h3 class="card-title">{{ regs|selectattr('Webinar Interest')|list|length }}</h3>
+      </div>
     </div>
   </div>
-
-  <div class="row">
-    <div class="col-md-6">
-      <h5>Gender Counts</h5>
-      <ul class="list-group mb-3">
-        {% for k,v in gender_counts %}
-          <li class="list-group-item d-flex justify-content-between align-items-center">{{ k }}<span class="badge bg-primary rounded-pill">{{ v }}</span></li>
-        {% endfor %}
-      </ul>
-    </div>
-    <div class="col-md-6">
-      <h5>College / Company Counts</h5>
-      <ul class="list-group mb-3">
-        {% for k,v in college_counts %}
-          <li class="list-group-item d-flex justify-content-between align-items-center">{{ k }}<span class="badge bg-primary rounded-pill">{{ v }}</span></li>
-        {% endfor %}
-      </ul>
+  <div class="col-sm-6 col-md-3">
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <h6 class="card-subtitle mb-2 text-muted">Blood Donation Interested</h6>
+        <h3 class="card-title">{{ regs|selectattr('Blood Donation')|list|length }}</h3>
+      </div>
     </div>
   </div>
-
-  <h5 class="mt-4">All Registrations</h5>
-  <div class="table-responsive">
-    <table class="table table-striped">
-      <thead>
-        <tr>
-          <th>#</th>
-          <th>Name</th>
-          <th>WhatsApp</th>
-          <th>Email</th>
-          <th>Qualification</th>
-          <th>Designation</th>
-          <th>Gender</th>
-          <th>College/Company</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for r in regs %}
-        <tr>
-          <td>{{ loop.index }}</td>
-          <td>{{ r['Name'] }}</td>
-          <td>{{ r['WhatsApp'] }}</td>
-          <td>{{ r['Email'] }}</td>
-          <td>{{ r['Qualification'] }}</td>
-          <td>{{ r['Designation'] }}</td>
-          <td>{{ r['Gender'] }}</td>
-          <td>{{ r['College/Company'] }}</td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
+  <div class="col-sm-6 col-md-3">
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <h6 class="card-subtitle mb-2 text-muted">Unique Colleges</h6>
+        <h3 class="card-title">{{ college_counts|length }}</h3>
+      </div>
+    </div>
   </div>
 </div>
+
+<div class="row">
+  <div class="col-lg-6 mb-4">
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <h5 class="card-title">Qualification Breakdown</h5>
+        <canvas id="qualChart" height="220"></canvas>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-6 mb-4">
+    <div class="card shadow-sm mb-3">
+      <div class="card-body">
+        <h5 class="card-title">Designation Breakdown</h5>
+        <canvas id="desigChart" height="220"></canvas>
+      </div>
+    </div>
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <h5 class="card-title">Gender Distribution</h5>
+        <canvas id="genderChart" height="150"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card mt-4">
+  <div class="card-body">
+    <h5 class="card-title">Recent Registrations</h5>
+    <div class="table-responsive">
+      <table class="table table-hover table-sm">
+        <thead class="table-light">
+          <tr>
+            <th>#</th>
+            <th>Name</th>
+            <th>Email</th>
+            <th>WhatsApp</th>
+            <th>Qualification</th>
+            <th>Designation</th>
+            <th>Blood Group</th>
+            <th>Webinar Date</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in regs|reverse %}
+          <tr>
+            <td>{{ loop.index }}</td>
+            <td>{{ r['Name'] }}</td>
+            <td>{{ r['Email'] }}</td>
+            <td>{{ r['WhatsApp'] }}</td>
+            <td>{{ r['Qualification'] }}</td>
+            <td>{{ r['Designation'] }}</td>
+            <td>{{ r['Blood Group'] }}</td>
+            <td>{{ r['Webinar Date'] }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+  // data from server (lists of [label, value])
+  const qual = {{ qual_counts|tojson }};
+  const desig = {{ desig_counts|tojson }};
+  const gender = {{ gender_counts|tojson }};
+
+  function labelsAndValues(pairs){
+    return [pairs.map(p=>p[0]), pairs.map(p=>p[1])];
+  }
+
+  const [qLabels, qValues] = labelsAndValues(qual);
+  const [dLabels, dValues] = labelsAndValues(desig);
+  const [gLabels, gValues] = labelsAndValues(gender);
+
+  const pal = [ '#0d6efd','#6610f2','#6f42c1','#d63384','#dc3545','#fd7e14','#ffc107','#198754','#20c997','#0dcaf0' ];
+
+  new Chart(document.getElementById('qualChart'), {
+    type: 'bar',
+    data: { labels: qLabels, datasets: [{ label: 'Count', data: qValues, backgroundColor: pal.slice(0,qValues.length) }] },
+    options: { responsive:true, maintainAspectRatio:false }
+  });
+
+  new Chart(document.getElementById('desigChart'), {
+    type: 'bar',
+    data: { labels: dLabels, datasets: [{ label: 'Count', data: dValues, backgroundColor: pal.slice(0,dValues.length) }] },
+    options: { responsive:true, maintainAspectRatio:false }
+  });
+
+  new Chart(document.getElementById('genderChart'), {
+    type: 'doughnut',
+    data: { labels: gLabels, datasets: [{ data: gValues, backgroundColor: pal.slice(0,gValues.length) }] },
+    options: { responsive:true, maintainAspectRatio:false }
+  });
+</script>
 {% endblock %}
