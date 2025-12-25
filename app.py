@@ -28,7 +28,6 @@ if firebase_b64:
     firebase_json = base64.b64decode(firebase_b64).decode("utf-8")
 
 
-
 if not firebase_admin._apps:
     cred = credentials.Certificate(json.loads(firebase_json))
     firebase_admin.initialize_app(cred)
