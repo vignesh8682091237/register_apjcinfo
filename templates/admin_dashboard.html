@@ -6,7 +6,6 @@
     <small class="text-muted">Overview of registrations</small>
   </div>
   <div>
-    <a href="/admin/download" class="btn btn-outline-light btn-sm me-2 btn-download-excel">Download Excel</a>
     <a href="/admin/logout" class="btn btn-secondary btn-sm">Logout</a>
   </div>
 </div>
@@ -25,8 +24,7 @@
     <a href="{{ url_for('admin_dashboard') }}" class="btn btn-sm btn-outline-secondary ms-1">Clear</a>
   </div>
   <div class="col-auto ms-auto">
-    <a href="{{ url_for('admin_download') }}" class="btn btn-sm btn-success">Download All</a>
-    <a href="{{ url_for('admin_download') }}?start={{ start }}&end={{ end }}" class="btn btn-sm btn-warning ms-1">Download Filtered</a>
+    <a href="{{ url_for('admin_download') }}" class="btn btn-sm btn-success">Download Excel</a>
     <a href="{{ url_for('admin_api_key') }}" class="btn btn-sm btn-outline-dark ms-2">API Key</a>
   </div>
 </form>
@@ -135,6 +133,8 @@
             <th>Email</th>
             <th>WhatsApp</th>
             <th>Qualification</th>
+            <th>Gender</th>
+            <th>College/Company</th>
             <th>Designation</th>
             <th>Blood Group</th>
             <th>Webinar Date</th>
@@ -145,14 +145,22 @@
           {% for r in regs|reverse %}
           <tr>
             <td>{{ total - loop.index + 1 }}</td>
-            <td>{{ r.get('Name','') }}</td>
-            <td>{{ r.get('Email','') }}</td>
-            <td>{{ r.get('WhatsApp','') }}</td>
-            <td>{{ r.get('Qualification','') }}</td>
-            <td>{{ r.get('Designation','') }}</td>
-            <td>{{ r.get('Blood Group','') }}</td>
-            <td>{{ r.get('Webinar Date','') }}</td>
-            <td>{{ r.get('Registered At','') }}</td>
+            <td>{{ r.get('name','') }}</td>
+            <td>{{ r.get('email','') }}</td>
+            <td>{{ r.get('whatsapp','') }}</td>
+            <td>{{ r.get('qualification','') }}</td>
+            <td>{{ r.get('gender','') }}</td>
+            <td>{{ r.get('college_company','') }}</td>
+            <td>{{ r.get('designation','') }}</td>
+            <td>{{ r.get('blood_group','') }}</td>
+            <td>{{ r.get('webinar_date','') }}</td>
+            <td>{{ r.get('registered_at','') }}</td>
+            <td>
+              <a href="{{ url_for('admin_edit', doc_id=r['id']) }}" class="btn btn-warning btn-sm me-1">Edit</a>
+              <form method="post" action="{{ url_for('admin_delete', doc_id=r['id']) }}" style="display:inline;">
+                <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Are you sure you want to delete this registration?');">Remove</button>
+              </form>
+            </td>
           </tr>
           {% endfor %}
         </tbody>

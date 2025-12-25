@@ -1,0 +1,54 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container mt-4">
+  <h2>Edit Registration</h2>
+  <form method="post">
+    <div class="mb-3">
+      <label class="form-label">Name</label>
+      <input type="text" class="form-control" name="name" value="{{ reg.get('name','') }}" required>
+    </div>
+    <div class="mb-3">
+      <label class="form-label">WhatsApp</label>
+      <input type="text" class="form-control" name="whatsapp" value="{{ reg.get('whatsapp','') }}">
+    </div>
+    <div class="mb-3">
+      <label class="form-label">Email</label>
+      <input type="email" class="form-control" name="email" value="{{ reg.get('email','') }}">
+    </div>
+    <div class="mb-3">
+      <label class="form-label">Qualification</label>
+      <input type="text" class="form-control" name="qualification" value="{{ reg.get('qualification','') }}">
+    </div>
+    <div class="mb-3">
+      <label class="form-label">Designation</label>
+      <input type="text" class="form-control" name="designation" value="{{ reg.get('designation','') }}">
+    </div>
+    <div class="mb-3">
+      <label class="form-label">Gender</label>
+      <input type="text" class="form-control" name="gender" value="{{ reg.get('gender','') }}">
+    </div>
+    <div class="mb-3">
+      <label class="form-label">College/Company</label>
+      <input type="text" class="form-control" name="college_company" value="{{ reg.get('college_company','') }}">
+    </div>
+    <div class="mb-3">
+      <label class="form-label">Blood Donation</label>
+      <input type="text" class="form-control" name="blood_donation" value="{{ reg.get('blood_donation','') }}">
+    </div>
+    <div class="mb-3">
+      <label class="form-label">Blood Group</label>
+      <input type="text" class="form-control" name="blood_group" value="{{ reg.get('blood_group','') }}">
+    </div>
+    <div class="mb-3">
+      <label class="form-label">Webinar Interest</label>
+      <input type="text" class="form-control" name="webinar_interest" value="{{ reg.get('webinar_interest','') }}">
+    </div>
+    <div class="mb-3">
+      <label class="form-label">Webinar Date</label>
+      <input type="text" class="form-control" name="webinar_date" value="{{ reg.get('webinar_date','') }}">
+    </div>
+    <button type="submit" class="btn btn-primary">Update</button>
+    <a href="{{ url_for('admin_dashboard') }}" class="btn btn-secondary ms-2">Cancel</a>
+  </form>
+</div>
+{% endblock %}
