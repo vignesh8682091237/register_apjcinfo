@@ -27,17 +27,7 @@ firebase_b64 = os.environ.get("FIREBASE_CREDENTIALS_B64")
 if firebase_b64:
     firebase_json = base64.b64decode(firebase_b64).decode("utf-8")
 
-# 2️⃣ Fallback to local JSON file (LOCAL only)
-if not firebase_json:
-    try:
-        with open("apjc-register-firebase.json", "r") as f:
-            firebase_json = f.read()
-        print("✅ Using local firebase-key.json")
-    except FileNotFoundError:
-        raise RuntimeError(
-            "Firebase credentials not found.\n"
-            "Set FIREBASE_CREDENTIALS_B64 env OR keep firebase-key.json in project root."
-        )
+
 
 if not firebase_admin._apps:
     cred = credentials.Certificate(json.loads(firebase_json))
