@@ -1,13 +1,43 @@
 # Registration App (Flask)
 
-Simple Flask application with:
-- Public registration form (`/register`) — no login required.
-- Admin login (`/admin/login`) with default credentials: `admin@gmail.com` / `Aniruth8682@`.
-- Admin dashboard (`/admin/dashboard`) showing total registrations and category counts, plus download Excel option.
+A simple Flask-based registration application using **Firebase Firestore** for data storage.
 
-Setup
-1. Create a virtualenv and activate it.
-2. Install dependencies:
+## Features
+- Public registration form (`/register`) — no login required
+- Admin login (`/admin/login`)
+- Admin dashboard (`/admin/dashboard`)
+  - View total registrations
+  - View category counts
+  - Edit / delete registrations
+  - Generate and manage API key
+  - Download registrations as Excel
+
+---
+
+## Admin Credentials (Default)
+
+Email: admin@gmail.com  
+Password: admin123  
+
+(Change these in production)
+
+---
+
+## Tech Stack
+- Python 3.11
+- Flask
+- Firebase Firestore
+- Gunicorn
+- Bootstrap
+
+---
+
+## Local Setup
+
+### 1. Create virtual environment
+```bash
+python -m venv venv
+venv\Scripts\activate
 
 ```bash
 pip install -r requirements.txt

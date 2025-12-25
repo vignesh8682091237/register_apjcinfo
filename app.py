@@ -1,5 +1,6 @@
 import os
 import json
+import base64
 import io
 from functools import wraps
 from collections import Counter
@@ -16,24 +17,30 @@ from firebase_admin import credentials, firestore
 
 
 # =========================================================
-# 🔥 FIREBASE INIT (LOCAL + RENDER SAFE)
+# 🔥 FIREBASE INIT (ENV FIRST, JSON FILE FALLBACK)
 # =========================================================
 
-firebase_creds = os.environ.get("FIREBASE_CREDENTIALS")
+firebase_json = None
 
-if not firebase_creds:
+# 1️⃣ Try Base64 ENV (Render / Production)
+firebase_b64 = os.environ.get("FIREBASE_CREDENTIALS_B64")
+if firebase_b64:
+    firebase_json = base64.b64decode(firebase_b64).decode("utf-8")
+
+# 2️⃣ Fallback to local JSON file (LOCAL only)
+if not firebase_json:
     try:
         with open("apjc-register-firebase.json", "r") as f:
-            firebase_creds = f.read()
-        print("✅ Using local Firebase JSON")
+            firebase_json = f.read()
+        print("✅ Using local firebase-key.json")
     except FileNotFoundError:
         raise RuntimeError(
-            "Firebase credentials not found. "
-            "Set FIREBASE_CREDENTIALS env or keep apjc-register-firebase.json"
+            "Firebase credentials not found.\n"
+            "Set FIREBASE_CREDENTIALS_B64 env OR keep firebase-key.json in project root."
         )
 
 if not firebase_admin._apps:
-    cred = credentials.Certificate(json.loads(firebase_creds))
+    cred = credentials.Certificate(json.loads(firebase_json))
     firebase_admin.initialize_app(cred)
 
 db = firestore.client()
@@ -94,7 +101,7 @@ def register():
             "blood_donation": data.get("blood_donation", "").strip(),
             "blood_group": data.get("blood_group", "").strip(),
             "webinar_interest": data.get("webinar_interest", "").strip(),
-            "webinar_date": data.get("webinar_date", ""),
+            "webinar_date": data.get("webinar_date", "").strip(),
             "registered_at": firestore.SERVER_TIMESTAMP
         }
 
@@ -142,36 +149,42 @@ def admin_logout():
 @app.route("/admin/dashboard")
 @admin_required
 def admin_dashboard():
-    docs = (
-        db.collection("registrations")
-        .order_by("registered_at", direction=firestore.Query.DESCENDING)
-        .stream()
-    )
+    docs = db.collection("registrations").stream()
 
     regs = []
     for doc in docs:
-        r = doc.to_dict()
-        r["id"] = doc.id
-        regs.append(r)
+        d = doc.to_dict()
+        d["id"] = doc.id
+        regs.append(d)
 
     total = len(regs)
+
     webinar_interest_count = sum(
         1 for r in regs if r.get("webinar_interest", "").lower() == "yes"
     )
+
     blood_donation_count = sum(
         1 for r in regs if r.get("blood_donation", "").lower() == "yes"
     )
 
+    college_counts = set(
+        r.get("college_company", "")
+        for r in regs if r.get("college_company")
+    )
+
     qual_counts = Counter(
-        r.get("qualification", "") for r in regs if r.get("qualification")
+        r.get("qualification", "")
+        for r in regs if r.get("qualification")
     ).most_common()
 
     desig_counts = Counter(
-        r.get("designation", "") for r in regs if r.get("designation")
+        r.get("designation", "")
+        for r in regs if r.get("designation")
     ).most_common()
 
     gender_counts = Counter(
-        r.get("gender", "") for r in regs if r.get("gender")
+        r.get("gender", "")
+        for r in regs if r.get("gender")
     ).most_common()
 
     return render_template(
@@ -179,10 +192,13 @@ def admin_dashboard():
         total=total,
         webinar_interest_count=webinar_interest_count,
         blood_donation_count=blood_donation_count,
+        college_counts=college_counts,
         qual_counts=qual_counts,
         desig_counts=desig_counts,
         gender_counts=gender_counts,
-        regs=regs
+        regs=regs,
+        start=None,
+        end=None
     )
 
 
@@ -197,13 +213,13 @@ def admin_edit(doc_id):
     snap = ref.get()
 
     if not snap.exists:
-        flash("Registration not found", "danger")
+        flash("Record not found", "danger")
         return redirect(url_for("admin_dashboard"))
 
     reg = snap.to_dict()
 
     if request.method == "POST":
-        update_data = {
+        ref.update({
             "name": request.form.get("name", "").strip(),
             "whatsapp": request.form.get("whatsapp", "").strip(),
             "email": request.form.get("email", "").strip(),
@@ -214,37 +230,33 @@ def admin_edit(doc_id):
             "blood_donation": request.form.get("blood_donation", "").strip(),
             "blood_group": request.form.get("blood_group", "").strip(),
             "webinar_interest": request.form.get("webinar_interest", "").strip(),
-            "webinar_date": request.form.get("webinar_date", "")
-        }
+            "webinar_date": request.form.get("webinar_date", "").strip()
+        })
 
-        ref.update(update_data)
-        flash("Registration updated!", "success")
+        flash("Updated successfully", "success")
         return redirect(url_for("admin_dashboard"))
 
     return render_template("admin_edit.html", reg=reg, doc_id=doc_id)
 
 
 # =========================================================
-# 🗑️ ADMIN DELETE  ✅ (FIXED)
+# 🗑️ ADMIN DELETE (POST ONLY)
 # =========================================================
 
-@app.route("/admin/delete/<doc_id>")
+@app.route("/admin/delete/<doc_id>", methods=["POST"])
 @admin_required
 def admin_delete(doc_id):
     ref = db.collection("registrations").document(doc_id)
-    snap = ref.get()
-
-    if snap.exists:
+    if ref.get().exists:
         ref.delete()
-        flash("Registration deleted successfully", "success")
+        flash("Deleted successfully", "success")
     else:
-        flash("Registration not found", "danger")
-
+        flash("Record not found", "danger")
     return redirect(url_for("admin_dashboard"))
 
 
 # =========================================================
-# 🔑 ADMIN API KEY  ✅ (FIXED)
+# 🔑 ADMIN API KEY
 # =========================================================
 
 @app.route("/admin/api-key", methods=["GET", "POST"])
@@ -252,14 +264,13 @@ def admin_delete(doc_id):
 def admin_api_key():
     ref = db.collection("admin").document("api_key")
     snap = ref.get()
-
     api_key = snap.to_dict().get("key") if snap.exists else None
 
     if request.method == "POST":
         import secrets
         api_key = secrets.token_urlsafe(32)
         ref.set({"key": api_key})
-        flash("API key generated successfully", "success")
+        flash("API key generated", "success")
 
     return render_template("admin_api_key.html", api_key=api_key)
 
@@ -314,19 +325,28 @@ def admin_download():
 
 
 # =========================================================
-# 🌐 API
+# 🌐 API (API KEY PROTECTED)
 # =========================================================
 
 @app.route("/api/registrations")
 def api_registrations():
+    key = request.headers.get("X-API-Key") or request.args.get("api_key")
+
+    ref = db.collection("admin").document("api_key")
+    snap = ref.get()
+    valid_key = snap.to_dict().get("key") if snap.exists else None
+
+    if not key or key != valid_key:
+        return jsonify({"error": "Invalid API key"}), 401
+
     docs = db.collection("registrations").stream()
-    regs = []
+    data = []
     for doc in docs:
         d = doc.to_dict()
         d["id"] = doc.id
-        regs.append(d)
+        data.append(d)
 
-    return jsonify({"count": len(regs), "registrations": regs})
+    return jsonify({"count": len(data), "registrations": data})
 
 
 # =========================================================
@@ -334,4 +354,4 @@ def api_registrations():
 # =========================================================
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    app.run(host="0.0.0.0", port=8000, debug=True)
